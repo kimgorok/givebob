@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>가천대 학식 메뉴</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      .menu-container {
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .date-section {
+        margin-bottom: 30px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 20px;
+      }
+
+      .date-header {
+        background-color: #4a90e2;
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+      }
+
+      .meal-type {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .menu-items {
+        list-style-type: none;
+        padding-left: 0;
+      }
+
+      .menu-item {
+        padding: 5px 10px;
+        background-color: #f8f9fa;
+        margin-bottom: 5px;
+        border-radius: 3px;
+      }
+
+      #loading {
+        text-align: center;
+        padding: 20px;
+      }
+
+      #error {
+        color: red;
+        text-align: center;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="menu-container">
+      <h1>가천대 학식 메뉴</h1>
+      <div id="loading">메뉴 로딩중...</div>
+      <div id="error" style="display: none"></div>
+      <div id="menu-content"></div>
+    </div>
+
+    <script>
+      async function fetchMenu() {
+        try {
+          const response = await fetch("http://localhost:8000/api/menu");
+          const data = await response.json();
+
+          if (data.status === "success") {
+            displayMenu(data.data);
+          } else {
+            throw new Error("메뉴를 가져오는데 실패했습니다.");
+          }
+        } catch (error) {
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("error").style.display = "block";
+          document.getElementById("error").textContent = error.message;
+        }
+      }
+
+      function displayMenu(menuData) {
+        const menuContent = document.getElementById("menu-content");
+        document.getElementById("loading").style.display = "none";
+
+        const html = Object.entries(menuData)
+          .map(
+            ([date, meals]) => `
+                    <div class="date-section">
+                        <div class="date-header">${formatDate(date)}</div>
+                        ${Object.entries(meals)
+                          .map(
+                            ([mealType, menuItems]) => `
+                                <div class="meal-section">
+                                    <div class="meal-type">${mealType}</div>
+                                    <ul class="menu-items">
+                                        ${menuItems
+                                          .map(
+                                            (item) => `
+                                                <li class="menu-item">${item}</li>
+                                            `
+                                          )
+                                          .join("")}
+                                    </ul>
+                                </div>
+                            `
+                          )
+                          .join("")}
+                    </div>
+                `
+          )
+          .join("");
+
+        menuContent.innerHTML = html;
+      }
+
+      function formatDate(dateStr) {
+        const [year, month, day] = dateStr.split(".");
+        const date = new Date(year, month - 1, day);
+        const weekDays = ["일", "월", "화", "수", "목", "금", "토"];
+        const weekDay = weekDays[date.getDay()];
+        return `${year}년 ${month}월 ${day}일 (${weekDay})`;
+      }
+
+      // 페이지 로드 시 메뉴 가져오기
+      fetchMenu();
+    </script>
+  </body>
+</html>
