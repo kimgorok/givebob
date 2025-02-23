@@ -3,204 +3,186 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>가천대 학식 메뉴</title>
+    <title>가천대학교 학생식당 메뉴</title>
     <style>
       body {
-        font-family: "Arial", sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
         background-color: #f5f5f5;
       }
 
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+      }
+
       .cafeteria-section {
-        background-color: white;
+        background: white;
         border-radius: 10px;
         padding: 20px;
-        margin-bottom: 30px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-
-      .cafeteria-info {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 20px;
-      }
-
-      .cafeteria-info p {
-        margin: 5px 0;
-        color: #666;
+        flex: 1;
+        min-width: 300px;
+        max-width: 600px;
       }
 
       .cafeteria-title {
-        color: #2c3e50;
-        border-bottom: 2px solid #eee;
+        color: #1a73e8;
+        margin-top: 0;
         padding-bottom: 10px;
-        margin-bottom: 20px;
+        border-bottom: 2px solid #1a73e8;
       }
 
-      .date-section {
-        margin-bottom: 30px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 20px;
-      }
-
-      .date-header {
-        background-color: #4a90e2;
-        color: white;
-        padding: 10px;
-        border-radius: 5px;
-        margin-bottom: 15px;
-      }
-
-      .meal-type {
+      .menu-date {
         font-weight: bold;
-        color: #333;
-        margin: 15px 0 10px 0;
-        background-color: #e9ecef;
-        padding: 8px;
-        border-radius: 3px;
+        color: #202124;
+        margin-top: 20px;
+        padding: 10px;
+        background: #e8f0fe;
+        border-radius: 5px;
+      }
+
+      .menu-type {
+        color: #1a73e8;
+        margin: 10px 0 5px 0;
+        font-weight: 500;
       }
 
       .menu-items {
-        list-style-type: none;
+        list-style: none;
         padding-left: 0;
+        margin: 0;
       }
 
-      .menu-item {
-        padding: 8px 15px;
-        background-color: #f8f9fa;
-        margin-bottom: 5px;
-        border-radius: 3px;
-        transition: background-color 0.2s;
-      }
-
-      .menu-item:hover {
-        background-color: #e9ecef;
+      .menu-items li {
+        padding: 5px 0;
+        color: #3c4043;
       }
 
       .loading {
         text-align: center;
+        color: #5f6368;
         padding: 20px;
-        color: #666;
       }
 
       .error {
-        color: #dc3545;
-        text-align: center;
-        padding: 20px;
-        background-color: #f8d7da;
+        color: #d93025;
+        padding: 10px;
         border-radius: 5px;
-        margin: 10px 0;
+        background: #fce8e6;
+        margin-top: 10px;
+        display: none;
       }
 
-      @media (max-width: 768px) {
-        body {
-          padding: 10px;
-        }
+      .week-selector {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
 
-        .cafeteria-section {
-          padding: 15px;
-        }
+      .week-button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 5px;
+        background-color: #1a73e8;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .week-button:hover {
+        background-color: #1557b0;
+      }
+
+      .week-button.active {
+        background-color: #1557b0;
       }
     </style>
   </head>
   <body>
-    <h1 style="text-align: center; color: #2c3e50">가천대 학식 메뉴</h1>
-
-    <div id="vision-tower" class="cafeteria-section">
-      <h2 class="cafeteria-title">비전타워 식당</h2>
-      <div id="vision-loading" class="loading">메뉴 로딩중...</div>
-      <div id="vision-error" class="error" style="display: none"></div>
-      <div id="vision-content"></div>
+    <div class="week-selector">
+      <button class="week-button" onclick="changeWeek('pre')">이전 주</button>
+      <button class="week-button active" onclick="changeWeek('')">
+        이번 주
+      </button>
+      <button class="week-button" onclick="changeWeek('next')">다음 주</button>
     </div>
 
-    <div id="education" class="cafeteria-section">
-      <h2 class="cafeteria-title">교육대학원 식당</h2>
-      <div id="education-loading" class="loading">메뉴 로딩중...</div>
-      <div id="education-error" class="error" style="display: none"></div>
-      <div id="education-content"></div>
+    <div class="container">
+      <div id="education" class="cafeteria-section">
+        <h2 class="cafeteria-title">교육대학원 식당</h2>
+        <div id="education-loading" class="loading">메뉴 로딩중...</div>
+        <div id="education-error" class="error" style="display: none"></div>
+        <div id="education-content"></div>
+      </div>
     </div>
 
     <script>
-      async function fetchMenuData(endpoint, containerId) {
+      let currentWeek = "";
+
+      function changeWeek(week) {
+        currentWeek = week;
+        // 모든 버튼에서 active 클래스 제거
+        document.querySelectorAll(".week-button").forEach((button) => {
+          button.classList.remove("active");
+        });
+        // 클릭된 버튼에 active 클래스 추가
+        event.target.classList.add("active");
+
+        // 메뉴 다시 로드
+        fetchMenuData("education", "education", week);
+      }
+
+      async function fetchMenuData(endpoint, containerId, week = "") {
         const loadingEl = document.getElementById(`${containerId}-loading`);
         const errorEl = document.getElementById(`${containerId}-error`);
         const contentEl = document.getElementById(`${containerId}-content`);
 
+        loadingEl.style.display = "block";
+        errorEl.style.display = "none";
+        contentEl.innerHTML = "";
+
         try {
           const response = await fetch(
-            `http://localhost:8000/api/menu/${endpoint}`
+            `http://localhost:8000/api/menu/${endpoint}?week=${week}`
           );
           const data = await response.json();
 
           if (data.status === "success") {
-            loadingEl.style.display = "none";
-            errorEl.style.display = "none";
+            let html = "";
 
-            // 식당 정보 표시
-            const infoHtml = `
-                        <div class="cafeteria-info">
-                            <p><strong>위치:</strong> ${data.data.info.location}</p>
-                            <p><strong>운영시간:</strong> ${data.data.info.operation_time}</p>
-                            <p><strong>연락처:</strong> ${data.data.info.contact}</p>
-                        </div>
+            for (const [date, meals] of Object.entries(data.data.menus)) {
+              html += `<div class="menu-date">${date}</div>`;
+              for (const [type, items] of Object.entries(meals)) {
+                html += `
+                        <div class="menu-type">${type}</div>
+                        <ul class="menu-items">
+                            ${items.map((item) => `<li>${item}</li>`).join("")}
+                        </ul>
                     `;
+              }
+            }
 
-            // 메뉴 데이터 표시
-            const menuHtml = Object.entries(data.data.menus)
-              .map(
-                ([date, meals]) => `
-                            <div class="date-section">
-                                <div class="date-header">${formatDate(
-                                  date
-                                )}</div>
-                                ${Object.entries(meals)
-                                  .map(
-                                    ([mealType, menuItems]) => `
-                                        <div class="meal-section">
-                                            <div class="meal-type">${mealType}</div>
-                                            <ul class="menu-items">
-                                                ${menuItems
-                                                  .map(
-                                                    (item) => `
-                                                        <li class="menu-item">${item}</li>
-                                                    `
-                                                  )
-                                                  .join("")}
-                                            </ul>
-                                        </div>
-                                    `
-                                  )
-                                  .join("")}
-                            </div>
-                        `
-              )
-              .join("");
-
-            contentEl.innerHTML = infoHtml + menuHtml;
+            contentEl.innerHTML = html;
           } else {
-            throw new Error("메뉴를 가져오는데 실패했습니다.");
+            throw new Error("Failed to fetch menu data");
           }
         } catch (error) {
-          loadingEl.style.display = "none";
+          errorEl.textContent = "메뉴를 불러오는데 실패했습니다.";
           errorEl.style.display = "block";
-          errorEl.textContent = error.message;
+        } finally {
+          loadingEl.style.display = "none";
         }
       }
 
-      function formatDate(dateStr) {
-        const [year, month, day] = dateStr.split(".");
-        const date = new Date(year, month - 1, day);
-        const weekDays = ["일", "월", "화", "수", "목", "금", "토"];
-        const weekDay = weekDays[date.getDay()];
-        return `${year}년 ${month}월 ${day}일 (${weekDay})`;
-      }
-
-      // 페이지 로드 시 각 식당의 메뉴 가져오기
+      // 페이지 로드 시 현재 주 메뉴 가져오기
       document.addEventListener("DOMContentLoaded", () => {
-        fetchMenuData("vision", "vision-tower");
         fetchMenuData("education", "education");
       });
     </script>
