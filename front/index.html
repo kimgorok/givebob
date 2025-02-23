@@ -7,17 +7,37 @@
     <style>
       body {
         font-family: "Arial", sans-serif;
-        max-width: 800px;
+        max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
         background-color: #f5f5f5;
       }
 
-      .menu-container {
+      .cafeteria-section {
         background-color: white;
         border-radius: 10px;
         padding: 20px;
+        margin-bottom: 30px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .cafeteria-info {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+
+      .cafeteria-info p {
+        margin: 5px 0;
+        color: #666;
+      }
+
+      .cafeteria-title {
+        color: #2c3e50;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
       }
 
       .date-section {
@@ -37,7 +57,10 @@
       .meal-type {
         font-weight: bold;
         color: #333;
-        margin-bottom: 10px;
+        margin: 15px 0 10px 0;
+        background-color: #e9ecef;
+        padding: 8px;
+        border-radius: 3px;
       }
 
       .menu-items {
@@ -46,83 +69,125 @@
       }
 
       .menu-item {
-        padding: 5px 10px;
+        padding: 8px 15px;
         background-color: #f8f9fa;
         margin-bottom: 5px;
         border-radius: 3px;
+        transition: background-color 0.2s;
       }
 
-      #loading {
-        text-align: center;
-        padding: 20px;
+      .menu-item:hover {
+        background-color: #e9ecef;
       }
 
-      #error {
-        color: red;
+      .loading {
         text-align: center;
         padding: 20px;
+        color: #666;
+      }
+
+      .error {
+        color: #dc3545;
+        text-align: center;
+        padding: 20px;
+        background-color: #f8d7da;
+        border-radius: 5px;
+        margin: 10px 0;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding: 10px;
+        }
+
+        .cafeteria-section {
+          padding: 15px;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="menu-container">
-      <h1>가천대 학식 메뉴</h1>
-      <div id="loading">메뉴 로딩중...</div>
-      <div id="error" style="display: none"></div>
-      <div id="menu-content"></div>
+    <h1 style="text-align: center; color: #2c3e50">가천대 학식 메뉴</h1>
+
+    <div id="vision-tower" class="cafeteria-section">
+      <h2 class="cafeteria-title">비전타워 식당</h2>
+      <div id="vision-loading" class="loading">메뉴 로딩중...</div>
+      <div id="vision-error" class="error" style="display: none"></div>
+      <div id="vision-content"></div>
+    </div>
+
+    <div id="education" class="cafeteria-section">
+      <h2 class="cafeteria-title">교육대학원 식당</h2>
+      <div id="education-loading" class="loading">메뉴 로딩중...</div>
+      <div id="education-error" class="error" style="display: none"></div>
+      <div id="education-content"></div>
     </div>
 
     <script>
-      async function fetchMenu() {
+      async function fetchMenuData(endpoint, containerId) {
+        const loadingEl = document.getElementById(`${containerId}-loading`);
+        const errorEl = document.getElementById(`${containerId}-error`);
+        const contentEl = document.getElementById(`${containerId}-content`);
+
         try {
-          const response = await fetch("http://localhost:8000/api/menu");
+          const response = await fetch(
+            `http://localhost:8000/api/menu/${endpoint}`
+          );
           const data = await response.json();
 
           if (data.status === "success") {
-            displayMenu(data.data);
+            loadingEl.style.display = "none";
+            errorEl.style.display = "none";
+
+            // 식당 정보 표시
+            const infoHtml = `
+                        <div class="cafeteria-info">
+                            <p><strong>위치:</strong> ${data.data.info.location}</p>
+                            <p><strong>운영시간:</strong> ${data.data.info.operation_time}</p>
+                            <p><strong>연락처:</strong> ${data.data.info.contact}</p>
+                        </div>
+                    `;
+
+            // 메뉴 데이터 표시
+            const menuHtml = Object.entries(data.data.menus)
+              .map(
+                ([date, meals]) => `
+                            <div class="date-section">
+                                <div class="date-header">${formatDate(
+                                  date
+                                )}</div>
+                                ${Object.entries(meals)
+                                  .map(
+                                    ([mealType, menuItems]) => `
+                                        <div class="meal-section">
+                                            <div class="meal-type">${mealType}</div>
+                                            <ul class="menu-items">
+                                                ${menuItems
+                                                  .map(
+                                                    (item) => `
+                                                        <li class="menu-item">${item}</li>
+                                                    `
+                                                  )
+                                                  .join("")}
+                                            </ul>
+                                        </div>
+                                    `
+                                  )
+                                  .join("")}
+                            </div>
+                        `
+              )
+              .join("");
+
+            contentEl.innerHTML = infoHtml + menuHtml;
           } else {
             throw new Error("메뉴를 가져오는데 실패했습니다.");
           }
         } catch (error) {
-          document.getElementById("loading").style.display = "none";
-          document.getElementById("error").style.display = "block";
-          document.getElementById("error").textContent = error.message;
+          loadingEl.style.display = "none";
+          errorEl.style.display = "block";
+          errorEl.textContent = error.message;
         }
-      }
-
-      function displayMenu(menuData) {
-        const menuContent = document.getElementById("menu-content");
-        document.getElementById("loading").style.display = "none";
-
-        const html = Object.entries(menuData)
-          .map(
-            ([date, meals]) => `
-                    <div class="date-section">
-                        <div class="date-header">${formatDate(date)}</div>
-                        ${Object.entries(meals)
-                          .map(
-                            ([mealType, menuItems]) => `
-                                <div class="meal-section">
-                                    <div class="meal-type">${mealType}</div>
-                                    <ul class="menu-items">
-                                        ${menuItems
-                                          .map(
-                                            (item) => `
-                                                <li class="menu-item">${item}</li>
-                                            `
-                                          )
-                                          .join("")}
-                                    </ul>
-                                </div>
-                            `
-                          )
-                          .join("")}
-                    </div>
-                `
-          )
-          .join("");
-
-        menuContent.innerHTML = html;
       }
 
       function formatDate(dateStr) {
@@ -133,8 +198,11 @@
         return `${year}년 ${month}월 ${day}일 (${weekDay})`;
       }
 
-      // 페이지 로드 시 메뉴 가져오기
-      fetchMenu();
+      // 페이지 로드 시 각 식당의 메뉴 가져오기
+      document.addEventListener("DOMContentLoaded", () => {
+        fetchMenuData("vision", "vision-tower");
+        fetchMenuData("education", "education");
+      });
     </script>
   </body>
 </html>
