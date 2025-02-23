@@ -15,7 +15,7 @@ import os
 import time
 
 # 데이터베이스 파일 경로 설정
-DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'menu.db')
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'menu.db')
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 def init_db():
