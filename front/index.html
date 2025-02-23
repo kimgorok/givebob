@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>가천대학교 학생식당 메뉴</title>
+    <title>교대밥</title>
     <style>
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -78,45 +78,12 @@
         margin-top: 10px;
         display: none;
       }
-
-      .week-selector {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 20px;
-      }
-
-      .week-button {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 5px;
-        background-color: #1a73e8;
-        color: white;
-        cursor: pointer;
-        transition: background-color 0.2s;
-      }
-
-      .week-button:hover {
-        background-color: #1557b0;
-      }
-
-      .week-button.active {
-        background-color: #1557b0;
-      }
     </style>
   </head>
   <body>
-    <div class="week-selector">
-      <button class="week-button" onclick="changeWeek('pre')">이전 주</button>
-      <button class="week-button active" onclick="changeWeek('')">
-        이번 주
-      </button>
-      <button class="week-button" onclick="changeWeek('next')">다음 주</button>
-    </div>
-
     <div class="container">
       <div id="education" class="cafeteria-section">
-        <h2 class="cafeteria-title">교육대학원 식당</h2>
+        <h2 class="cafeteria-title">교대밥</h2>
         <div id="education-loading" class="loading">메뉴 로딩중...</div>
         <div id="education-error" class="error" style="display: none"></div>
         <div id="education-content"></div>
@@ -124,22 +91,7 @@
     </div>
 
     <script>
-      let currentWeek = "";
-
-      function changeWeek(week) {
-        currentWeek = week;
-        // 모든 버튼에서 active 클래스 제거
-        document.querySelectorAll(".week-button").forEach((button) => {
-          button.classList.remove("active");
-        });
-        // 클릭된 버튼에 active 클래스 추가
-        event.target.classList.add("active");
-
-        // 메뉴 다시 로드
-        fetchMenuData("education", "education", week);
-      }
-
-      async function fetchMenuData(endpoint, containerId, week = "") {
+      async function fetchMenuData(endpoint, containerId) {
         const loadingEl = document.getElementById(`${containerId}-loading`);
         const errorEl = document.getElementById(`${containerId}-error`);
         const contentEl = document.getElementById(`${containerId}-content`);
@@ -150,7 +102,7 @@
 
         try {
           const response = await fetch(
-            `http://localhost:8000/api/menu/${endpoint}?week=${week}`
+            `http://localhost:8000/api/menu/${endpoint}`
           );
           const data = await response.json();
 
@@ -181,7 +133,7 @@
         }
       }
 
-      // 페이지 로드 시 현재 주 메뉴 가져오기
+      // 페이지 로드 시 메뉴 가져오기
       document.addEventListener("DOMContentLoaded", () => {
         fetchMenuData("education", "education");
       });

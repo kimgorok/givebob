@@ -21,12 +21,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_monday_date():
-    """현재 날짜가 속한 주의 월요일 날짜를 반환"""
-    today = datetime.now()
-    monday = today - timedelta(days=today.weekday())
-    return monday.strftime("%Y.%m.%d")
-
 def setup_driver():
     chrome_options = Options()
     chrome_options.add_argument('--headless')
@@ -38,25 +32,11 @@ def setup_driver():
     service = Service(ChromeDriverManager().install())
     return webdriver.Chrome(service=service, options=chrome_options)
 
-def construct_url(base_url, monday_date, week):
-    """
-    주차별 URL 생성 함수
-    week: 'pre' (이전 주), '' (현재 주), 'next' (다음 주)
-    """
-    if week in ['pre', 'next']:
-        params = f"monday={monday_date}&week={week}"
-        # URL에 파라미터 추가
-        return f"{base_url}?enc={params}"
-    return base_url
-
-def crawl_education_menu(base_url: str, monday_date: str, week: str = ''):
-    url = construct_url(base_url, monday_date, week)
+def crawl_education_menu(base_url: str):
     driver = setup_driver()
     try:
-        driver.get(url)
+        driver.get(base_url)
         wait = WebDriverWait(driver, 10)
-        
- 
         
         menu_data = {
             "menus": {}
@@ -94,15 +74,10 @@ def crawl_education_menu(base_url: str, monday_date: str, week: str = ''):
         driver.quit()
 
 @app.get("/api/menu/education")
-async def get_education_menu(week: str = ''):
-    """
-    week: 'pre' (이전 주), '' (현재 주), 'next' (다음 주)
-    """
+async def get_bob_menu():
     try:
         base_url = "https://www.gachon.ac.kr/kor/7349/subview.do"
-        monday_date = get_monday_date()
-        
-        menu_data = crawl_education_menu(base_url, monday_date, week)
+        menu_data = crawl_education_menu(base_url)
         return {"status": "success", "data": menu_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
