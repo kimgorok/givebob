@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from selenium import webdriver
@@ -8,18 +9,52 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, timedelta
+import sqlite3
+import json
+import os
 import time
 
-app = FastAPI()
+# 데이터베이스 파일 경로 설정
+DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'menu.db')
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-# CORS 설정
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS menu_data
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+         created_at TIMESTAMP NOT NULL,
+         menus TEXT NOT NULL)
+    ''')
+    conn.commit()
+    conn.close()
+
+def save_menu(menu_data):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        'INSERT INTO menu_data (created_at, menus) VALUES (?, ?)',
+        (datetime.now(), json.dumps(menu_data))
+    )
+    conn.commit()
+    conn.close()
+
+def get_latest_menu():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        'SELECT created_at, menus FROM menu_data ORDER BY created_at DESC LIMIT 1'
+    )
+    result = c.fetchone()
+    conn.close()
+    
+    if result:
+        return {
+            'created_at': datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f'),
+            'menus': json.loads(result[1])
+        }
+    return None
 
 def setup_driver():
     chrome_options = Options()
@@ -73,14 +108,48 @@ def crawl_education_menu(base_url: str):
     finally:
         driver.quit()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 시작할 때 실행될 코드
+    print("애플리케이션 시작")
+    init_db()
+    yield
+    # 종료할 때 실행될 코드
+    print("애플리케이션 종료")
+
+app = FastAPI(lifespan=lifespan)
+
+# CORS 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/api/menu/education")
 async def get_bob_menu():
     try:
-        base_url = "https://www.gachon.ac.kr/kor/7349/subview.do"
-        menu_data = crawl_education_menu(base_url)
-        return {"status": "success", "data": menu_data}
+        # 최신 데이터 확인
+        latest_menu = get_latest_menu()
+        
+        # 데이터가 없거나 6시간 이상 지난 경우 새로 크롤링
+        if not latest_menu or datetime.now() - latest_menu['created_at'] > timedelta(days=7):
+            base_url = "https://www.gachon.ac.kr/kor/7349/subview.do"
+            menu_data = crawl_education_menu(base_url)
+            save_menu(menu_data)
+            return {"status": "success", "data": menu_data}
+            
+        return {"status": "success", "data": latest_menu['menus']}
+    
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error: {str(e)}")  # 로깅
+        # 에러 발생 시 최신 데이터 반환 시도
+        latest_menu = get_latest_menu()
+        if latest_menu:
+            return {"status": "success", "data": latest_menu['menus']}
+        raise HTTPException(status_code=500, detail="메뉴를 불러오는데 실패했습니다.")
 
 @app.get("/")
 async def read_root():
