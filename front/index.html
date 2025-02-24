@@ -4,81 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>교대밥</title>
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          "Helvetica Neue", Arial, sans-serif;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-        background-color: #f5f5f5;
-      }
-
-      .container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        justify-content: center;
-      }
-
-      .cafeteria-section {
-        background: white;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        flex: 1;
-        min-width: 300px;
-        max-width: 600px;
-      }
-
-      .cafeteria-title {
-        color: #1a73e8;
-        margin-top: 0;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #1a73e8;
-      }
-
-      .menu-date {
-        font-weight: bold;
-        color: #202124;
-        margin-top: 20px;
-        padding: 10px;
-        background: #e8f0fe;
-        border-radius: 5px;
-      }
-
-      .menu-type {
-        color: #1a73e8;
-        margin: 10px 0 5px 0;
-        font-weight: 500;
-      }
-
-      .menu-items {
-        list-style: none;
-        padding-left: 0;
-        margin: 0;
-      }
-
-      .menu-items li {
-        padding: 5px 0;
-        color: #3c4043;
-      }
-
-      .loading {
-        text-align: center;
-        color: #5f6368;
-        padding: 20px;
-      }
-
-      .error {
-        color: #d93025;
-        padding: 10px;
-        border-radius: 5px;
-        background: #fce8e6;
-        margin-top: 10px;
-        display: none;
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="container">
@@ -89,54 +15,6 @@
         <div id="education-content"></div>
       </div>
     </div>
-
-    <script>
-      async function fetchMenuData(endpoint, containerId) {
-        const loadingEl = document.getElementById(`${containerId}-loading`);
-        const errorEl = document.getElementById(`${containerId}-error`);
-        const contentEl = document.getElementById(`${containerId}-content`);
-
-        loadingEl.style.display = "block";
-        errorEl.style.display = "none";
-        contentEl.innerHTML = "";
-
-        try {
-          const response = await fetch(
-            `http://localhost:8000/api/menu/${endpoint}`
-          );
-          const data = await response.json();
-
-          if (data.status === "success") {
-            let html = "";
-
-            for (const [date, meals] of Object.entries(data.data.menus)) {
-              html += `<div class="menu-date">${date}</div>`;
-              for (const [type, items] of Object.entries(meals)) {
-                html += `
-                        <div class="menu-type">${type}</div>
-                        <ul class="menu-items">
-                            ${items.map((item) => `<li>${item}</li>`).join("")}
-                        </ul>
-                    `;
-              }
-            }
-
-            contentEl.innerHTML = html;
-          } else {
-            throw new Error("Failed to fetch menu data");
-          }
-        } catch (error) {
-          errorEl.textContent = "메뉴를 불러오는데 실패했습니다.";
-          errorEl.style.display = "block";
-        } finally {
-          loadingEl.style.display = "none";
-        }
-      }
-
-      // 페이지 로드 시 메뉴 가져오기
-      document.addEventListener("DOMContentLoaded", () => {
-        fetchMenuData("education", "education");
-      });
-    </script>
+    <script src="script.js"></script>
   </body>
 </html>
