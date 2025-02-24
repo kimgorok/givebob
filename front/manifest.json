@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "givebob",
+  "description": "가천대학교 교육대학원 점심 식단",
+  "version": "1.0",
+  "action": {
+    "default_title": "밥줘",
+    "default_popup": "/index.html"
+  },
+  "permissions": ["activeTab", "declarativeNetRequest"],
+  "host_permissions": [
+    "*://*.gachon.ac.kr/*",
+    "https://givebob.onrender.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
