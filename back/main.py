@@ -134,7 +134,7 @@ async def get_bob_menu():
         # 최신 데이터 확인
         latest_menu = get_latest_menu()
         
-        # 데이터가 없거나 6시간 이상 지난 경우 새로 크롤링
+        # 데이터가 없거나 7일 이상 지난 경우 새로 크롤링
         if not latest_menu or datetime.now() - latest_menu['created_at'] > timedelta(days=7):
             base_url = "https://www.gachon.ac.kr/kor/7349/subview.do"
             menu_data = crawl_education_menu(base_url)
