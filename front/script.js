@@ -1,7 +1,8 @@
-async function fetchMenuData(endpoint, containerId) {
-  const loadingEl = document.getElementById(`${containerId}-loading`);
-  const errorEl = document.getElementById(`${containerId}-error`);
-  const contentEl = document.getElementById(`${containerId}-content`);
+// 메뉴 데이터를 가져오는 비동기 함수
+async function fetchMenuData() {
+  const loadingEl = document.getElementById("education-loading");
+  const errorEl = document.getElementById("education-error");
+  const contentEl = document.getElementById("education-content");
 
   // loading 표시 보이기
   loadingEl.classList.add("show");
@@ -10,7 +11,7 @@ async function fetchMenuData(endpoint, containerId) {
 
   try {
     const response = await fetch(
-      `https://givebob.onrender.com/api/menu/${endpoint}`
+      "https://givebob.onrender.com/api/menu/education"
     );
     const data = await response.json();
 
@@ -57,5 +58,5 @@ async function fetchMenuData(endpoint, containerId) {
 
 // DOM이 로드되면 메뉴 데이터를 가져옵니다
 document.addEventListener("DOMContentLoaded", () => {
-  fetchMenuData("education", "education");
+  fetchMenuData();
 });
