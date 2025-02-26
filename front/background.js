@@ -4,14 +4,18 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.action.enable();
 });
 
+// 가천대학교 도메인인지 확인하는 함수
+function isGachonDomain(url) {
+  return url && url.match(/^https?:\/\/([^\/]+\.)?gachon\.ac\.kr/);
+}
+
 // URL이 변경될 때마다 확인
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url) {
-    // 가천대학교 도메인인지 확인
-    if (tab.url.match(/^https?:\/\/([^\/]+\.)?gachon\.ac\.kr/)) {
-      // 익스텐션 활성화하고 팝업 표시
+    if (isGachonDomain(tab.url)) {
+      // 가천대학교 도메인이면 익스텐션 활성화
       chrome.action.enable(tabId);
-      chrome.action.openPopup();
+      // 팝업은 자동으로 열지 않음
     } else {
       // 다른 사이트에서는 비활성화
       chrome.action.disable(tabId);
@@ -22,10 +26,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // 새 탭이 활성화될 때마다 확인
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   const tab = await chrome.tabs.get(activeInfo.tabId);
-  if (tab.url && tab.url.match(/^https?:\/\/([^\/]+\.)?gachon\.ac\.kr/)) {
-    // 가천대학교 사이트면 팝업 표시
+  if (isGachonDomain(tab.url)) {
+    // 가천대학교 사이트면 활성화
     chrome.action.enable(activeInfo.tabId);
-    chrome.action.openPopup();
   } else {
     chrome.action.disable(activeInfo.tabId);
   }
