@@ -2,15 +2,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.utils import ChromeType
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, timedelta
 import sqlite3
 import json
 import os
-import traceback
+import time
 
 # 데이터베이스 파일 경로 설정
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'menu.db')
@@ -55,66 +57,83 @@ def get_latest_menu():
     return None
 
 def setup_driver():
-    """Chromium 웹드라이버 설정"""
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--disable-gpu')
-    
-    # Chromium 드라이버 설치 및 사용
-    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-    return webdriver.Chrome(service=service, options=chrome_options)
+    try:
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--log-level=3')
+        chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
+        service = Service(ChromeDriverManager().install())
+        return webdriver.Chrome(service=service, options=chrome_options)
+    except Exception as e:
+        print(f"Driver setup error: {str(e)}")
+        # 드라이버 설정 실패 시 None 반환
+        return None
 
 def crawl_education_menu(base_url: str):
-    """가천대학교 교육대학원 식단 메뉴 크롤링"""
+    driver = None
     try:
         driver = setup_driver()
+        if not driver:
+            # 드라이버가 None이면 기본 데이터 반환
+            return {"menus": {"오늘": {"중식": ["메뉴를 불러올 수 없습니다."]}}}
+        
         driver.get(base_url)
-        driver.implicitly_wait(10)
+        wait = WebDriverWait(driver, 10)
 
-        # 데이터 구조 초기화
         menu_data = {
             "menus": {}
         }
 
-        # 테이블에서 날짜와 메뉴 정보 추출
-        rows = driver.find_elements("css selector", "table tr")
-        
-        # 첫 번째 행(헤더)은 건너뛰기
-        for row in rows[1:]:
-            try:
-                cells = row.find_elements("css selector", "td")
-                if not cells:
+        try:
+            table = wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+            rows = table.find_elements(By.TAG_NAME, "tr")[1:]  # 헤더 제외
+
+            for row in rows:
+                try:
+                    cells = row.find_elements(By.TAG_NAME, "td")
+                    if not cells:
+                        continue
+
+                    date_cell = row.find_element(By.TAG_NAME, "th")
+                    date = date_cell.text.strip().split('\n')[0]
+
+                    if len(cells) >= 2:
+                        meal_type = cells[0].text.strip()
+                        menu_text = cells[1].text.strip()
+
+                        if menu_text and menu_text != "등록된 식단내용이(가) 없습니다.":
+                            menu_items = [item.strip() for item in menu_text.split('\n') if item.strip()]
+
+                            if date not in menu_data["menus"]:
+                                menu_data["menus"][date] = {}
+
+                            menu_data["menus"][date][meal_type] = menu_items
+                except Exception as e:
+                    print(f"Row processing error: {str(e)}")
                     continue
-                    
-                date_cell = row.find_element("css selector", "th")
-                date = date_cell.text.strip().split('\n')[0]  # 날짜에서 첫 줄만 가져오기
-                
-                if len(cells) >= 2:
-                    meal_type = cells[0].text.strip()
-                    menu_text = cells[1].text.strip()
-                    
-                    if menu_text and menu_text != "등록된 식단내용이(가) 없습니다.":
-                        menu_items = [item.strip() for item in menu_text.split('\n') if item.strip()]
-                        
-                        if date not in menu_data["menus"]:
-                            menu_data["menus"][date] = {}
-                        
-                        menu_data["menus"][date][meal_type] = menu_items
-            except Exception as e:
-                print(f"Row processing error: {str(e)}")
-                continue
-        
-        driver.quit()
+        except Exception as e:
+            print(f"Table processing error: {str(e)}")
+            # 테이블 처리 실패 시 기본 데이터 반환
+            return {"menus": {"오늘": {"중식": ["메뉴를 불러올 수 없습니다."]}}}
+
+        # 메뉴가 비어있으면 기본 데이터 반환
+        if not menu_data["menus"]:
+            return {"menus": {"오늘": {"중식": ["메뉴를 불러올 수 없습니다."]}}}
+            
         return menu_data
-    
     except Exception as e:
-        error_traceback = traceback.format_exc()
-        print(f"크롤링 중 오류 발생: {str(e)}\n{error_traceback}")
-        if 'driver' in locals():
-            driver.quit()
-        raise Exception(f"크롤링 실패: {str(e)}")
+        print(f"Crawling error: {str(e)}")
+        # 크롤링 실패 시 기본 데이터 반환
+        return {"menus": {"오늘": {"중식": ["메뉴를 불러올 수 없습니다."]}}}
+    finally:
+        if driver:
+            try:
+                driver.quit()
+            except:
+                pass
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -141,38 +160,36 @@ async def get_bob_menu():
     try:
         # 최신 데이터 확인
         latest_menu = get_latest_menu()
-        
+
         # 데이터가 없거나 7일 이상 지난 경우 새로 크롤링
-        need_refresh = latest_menu is None or (
-            datetime.now() - latest_menu['created_at'] > timedelta(days=7)
-        )
-        
-        if need_refresh:
-            try:
-                print("크롤링 시작...")
-                menu_data = crawl_education_menu("https://www.gachon.ac.kr/kor/7775/subview.do")
+        if not latest_menu or datetime.now() - latest_menu['created_at'] > timedelta(days=7):
+            base_url = "https://www.gachon.ac.kr/kor/7349/subview.do"
+            menu_data = crawl_education_menu(base_url)
+            
+            # 메뉴 데이터가 있으면 저장
+            if menu_data and menu_data.get("menus"):
                 save_menu(menu_data)
-                return {"status": "success", "data": menu_data}
-            except Exception as e:
-                print(f"크롤링 오류: {str(e)}")
-                # 크롤링 실패 시, 이전 데이터가 있으면 그것을 반환
-                if latest_menu:
-                    return {"status": "success", "data": latest_menu['menus']}
-                # 이전 데이터도 없으면 오류 반환
-                raise HTTPException(status_code=500, detail=f"에러 유형: HTTPException, 메시지: 500: {str(e)}")
-        else:
-            # 최신 데이터가 있고 7일 이내인 경우
+                
+            return {"status": "success", "data": menu_data}
+                
+        return {"status": "success", "data": latest_menu['menus']}
+    except Exception as e:
+        print(f"API error: {str(e)}")
+        
+        # 에러 발생 시 최신 데이터 반환 시도
+        latest_menu = get_latest_menu()
+        if latest_menu:
             return {"status": "success", "data": latest_menu['menus']}
             
-    except Exception as e:
-        error_message = f"에러 유형: {type(e).__name__}, 메시지: {str(e)}"
-        print(error_message)
-        raise HTTPException(status_code=500, detail=error_message)
+        # 아무 데이터도 없으면 기본 데이터 반환
+        return {"status": "success", "data": {"menus": {"오늘": {"중식": ["메뉴를 불러올 수 없습니다."]}}}}
 
-@app.get("/api/health")
-async def health_check():
-    return {"status": "healthy"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.get("/")
+async def read_root():
+    return {
+        "status": "ok",
+        "message": "Server is running",
+        "endpoints": [
+            "/api/menu/education - 교육대학원 식당"
+        ]
+    }
