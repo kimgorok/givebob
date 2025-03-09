@@ -136,19 +136,22 @@ async def get_bob_menu():
 
         # 데이터가 없거나 7일 이상 지난 경우 새로 크롤링
         if not latest_menu or datetime.now() - latest_menu['created_at'] > timedelta(days=7):
-
-            base_url = "https://www.gachon.ac.kr/kor/7349/subview.do"
-            menu_data = crawl_education_menu(base_url)
-            save_menu(menu_data)
-            return {"status": "success", "data": menu_data}
+            try:
+                base_url = "https://www.gachon.ac.kr/kor/7349/subview.do"
+                menu_data = crawl_education_menu(base_url)
+                save_menu(menu_data)
+                return {"status": "success", "data": menu_data}
+            except Exception as crawl_error:
+                print(f"크롤링 오류: {str(crawl_error)}")
+                if latest_menu:
+                    print("최신 데이터 반환 시도")
+                    return {"status": "success", "data": latest_menu['menus']}
+                raise HTTPException(status_code=500, detail=f"크롤링 실패: {str(crawl_error)}")
         return {"status": "success", "data": latest_menu['menus']}
     except Exception as e:
-        print(f"Error: {str(e)}")  # 로깅
-        # 에러 발생 시 최신 데이터 반환 시도
-        latest_menu = get_latest_menu()
-        if latest_menu:
-            return {"status": "success", "data": latest_menu['menus']}
-        raise HTTPException(status_code=500, detail="메뉴를 불러오는데 실패했습니다.")
+        error_detail = f"에러 유형: {type(e).__name__}, 메시지: {str(e)}"
+        print(f"API 오류: {error_detail}")
+        raise HTTPException(status_code=500, detail=error_detail)
 @app.get("/")
 async def read_root():
     return {
