@@ -5,6 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.utils import ChromeType
 from datetime import datetime, timedelta
 import sqlite3
 import json
@@ -54,20 +55,15 @@ def get_latest_menu():
     return None
 
 def setup_driver():
-    """Chrome 웹드라이버 설정"""
+    """Chromium 웹드라이버 설정"""
     chrome_options = Options()
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--disable-gpu')
     
-    # render.com에서 Chrome 바이너리 위치 설정
-    # GOOGLE_CHROME_BIN 환경 변수가 설정되어 있으면 사용, 없으면 기본 경로 사용
-    chrome_options.binary_location = os.getenv('GOOGLE_CHROME_BIN', '/app/.apt/usr/bin/google-chrome')
-    
-    # ChromeDriverManager를 사용하여 드라이버 설치
-    service = Service(ChromeDriverManager().install())
-    
+    # Chromium 드라이버 설치 및 사용
+    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
     return webdriver.Chrome(service=service, options=chrome_options)
 
 def crawl_education_menu(base_url: str):
@@ -154,7 +150,7 @@ async def get_bob_menu():
         if need_refresh:
             try:
                 print("크롤링 시작...")
-                menu_data = crawl_education_menu("https://www.gachon.ac.kr/kor/7349/subview.do")
+                menu_data = crawl_education_menu("https://www.gachon.ac.kr/kor/7775/subview.do")
                 save_menu(menu_data)
                 return {"status": "success", "data": menu_data}
             except Exception as e:
